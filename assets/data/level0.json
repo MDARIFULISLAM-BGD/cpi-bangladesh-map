@@ -1,0 +1,13 @@
+[
+  {
+    "feature_id": "BGD",
+    "admin_level": "level0",
+    "name": "Bangladesh",
+    "shape_id": "71232402B16306086515200",
+    "centroid_lng": 90.27481022,
+    "centroid_lat": 23.83445462,
+    "area_sqkm": "147,570",
+    "thematic_area": "Health and Nutrition,Sustainable Development,Research and Learning,Emergency Response",
+    "logo_id": "health_nutrition_logo.png,sustainable_logo.png,research_logo.png,emergency_logo.png"
+  }
+]

@@ -1,0 +1,123 @@
+[
+  {
+    "feature_id": "CPI-001",
+    "name": "Community Partners International (CPI) - Bangladesh, Country Office",
+    "type": "Country Office",
+    "address": "Navana Bilkis Laurent, Flat A2, House 11/B, Road 36, Gulshan 2, Dhaka 1212",
+    "lng": 90.4144676,
+    "lat": 23.79065057,
+    "place_id": "Dhaka",
+    "status": "Active",
+    "icon_id": "cpi_icon.ico"
+  },
+  {
+    "feature_id": "CPI-002",
+    "name": "Community Partners International (CPI) - Bangladesh, Cox's Bazar Project Office",
+    "type": "Project Office",
+    "address": "White House (3rd Floor), Kolatoli Bypass Road (Opposite CXB Police Lines), East Dolphin Point, Cox's Bazar 4700",
+    "lng": 91.99224261,
+    "lat": 21.42201759,
+    "place_id": "Cox's Bazar",
+    "status": "Active",
+    "icon_id": "cpi_icon.ico"
+  },
+  {
+    "feature_id": "CPI-003",
+    "name": "CPI Health Outreach Field Office at Camp 01 West",
+    "type": "Health Outreach Program Field Office",
+    "address": "Camp 01 West",
+    "lng": 92.15092273,
+    "lat": 21.21348025,
+    "place_id": "Camp 01 West",
+    "status": "Active",
+    "icon_id": "outreach_icon.ico"
+  },
+  {
+    "feature_id": "CPI-004",
+    "name": "CPI Health Outreach Field Office at Camp 04",
+    "type": "Health Outreach Program Field Office",
+    "address": "Camp 04",
+    "lng": 92.14548403,
+    "lat": 21.20897571,
+    "place_id": "Camp 04",
+    "status": "Active",
+    "icon_id": "outreach_icon.ico"
+  },
+  {
+    "feature_id": "CPI-005",
+    "name": "CPI HSS Program at District Sadar Hospital, Cox's Bazar",
+    "type": "Program Location",
+    "address": "Cox's Bazar Sadar",
+    "lng": 91.97659941,
+    "lat": 21.44091727,
+    "place_id": "Cox's Bazar",
+    "status": "Active",
+    "icon_id": "hss_icon.ico"
+  },
+  {
+    "feature_id": "CPI-006",
+    "name": "CPI Health Post at Camp 01 West",
+    "type": "Program Location",
+    "address": "Camp 01 West",
+    "lng": 92.15402,
+    "lat": 21.21211,
+    "place_id": "Camp 01 West",
+    "status": "Active",
+    "icon_id": "hp_icon.ico"
+  },
+  {
+    "feature_id": "CPI-007",
+    "name": "CPI HSS Program at HOPE Field Hospital, Camp 04",
+    "type": "Program Location",
+    "address": "Camp 04",
+    "lng": 92.14656,
+    "lat": 21.21322,
+    "place_id": "Camp 04",
+    "status": "Active",
+    "icon_id": "hss_icon.ico"
+  },
+  {
+    "feature_id": "CPI-008",
+    "name": "CPI WASH & CE Field Office at Camp 01 West_Block B",
+    "type": "WASH & CE Program Field Office",
+    "address": "Camp 01 West",
+    "lng": 92.15281996,
+    "lat": 21.21490868,
+    "place_id": "Camp 01 West",
+    "status": "Active",
+    "icon_id": "wash_icon.ico"
+  },
+  {
+    "feature_id": "CPI-009",
+    "name": "CPI WASH & CE Field Office at Camp 01 West_Block C",
+    "type": "WASH & CE Program Field Office",
+    "address": "Camp 01 West",
+    "lng": 92.1551596,
+    "lat": 21.21364011,
+    "place_id": "Camp 01 West",
+    "status": "Active",
+    "icon_id": "wash_icon.ico"
+  },
+  {
+    "feature_id": "CPI-010",
+    "name": "CPI WASH & CE Field Office at Camp 04",
+    "type": "WASH & CE Program Field Office",
+    "address": "Camp 04",
+    "lng": 92.14287115,
+    "lat": 21.20586977,
+    "place_id": "Camp 04",
+    "status": "Active",
+    "icon_id": "wash_icon.ico"
+  },
+  {
+    "feature_id": "CPI-011",
+    "name": "CPI WASH & CE Field Office at Camp 17",
+    "type": "WASH & CE Program Field Office",
+    "address": "Camp 17",
+    "lng": 92.14005544,
+    "lat": 21.20204848,
+    "place_id": "Camp 17",
+    "status": "Active",
+    "icon_id": "wash_icon.ico"
+  }
+]

@@ -1,0 +1,352 @@
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CPI Bangladesh Mission Map</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.css" rel="stylesheet">
+    <style>
+        body { margin: 0; padding: 0; }
+        #map { position: absolute; top: 70px; bottom: 0; width: 100%; }
+        .header { 
+            background: #ffffff; 
+            padding: 10px; 
+            text-align: center; 
+            position: fixed; 
+            width: 100%; 
+            z-index: 1000;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .subheader { font-size: 1.2rem; color: #333; }
+        .theme-logos img { height: 30px; margin: 5px; }
+        .control-panel { 
+            position: absolute; 
+            top: 100px; 
+            left: 10px; 
+            background: white; 
+            padding: 15px; 
+            border-radius: 5px; 
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+            z-index: 1000;
+        }
+        .reset-btn {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            z-index: 1001;
+        }
+    </style>
+</head>
+<body>
+    <div id="app">
+        <div class="header">
+            <img src="assets/logos/cpi_logo.png" alt="CPI Logo" style="height: 40px; vertical-align: middle;">
+            <h1>CPI Bangladesh Mission Map</h1>
+            <div class="subheader">Thematic Presence in Bangladesh</div>
+            <div class="theme-logos">
+                <img src="assets/logos/health.png" alt="Health and Nutrition">
+                <img src="assets/logos/sustainable.png" alt="Sustainable Development">
+                <img src="assets/logos/research.png" alt="Research and Learning">
+                <img src="assets/logos/emergency.png" alt="Emergency Response">
+            </div>
+        </div>
+        <div class="control-panel">
+            <div class="mb-3">
+                <label for="district-filter" class="form-label">District</label>
+                <select id="district-filter" class="form-select" multiple v-model="selectedDistricts" @change="filterMap">
+                    <option v-for="district in districts" :value="district.feature_id">{{ district.name }}</option>
+                </select>
+            </div>
+            <div class="mb-3">
+                <label for="upazila-filter" class="form-label">Upazila</label>
+                <select id="upazila-filter" class="form-select" multiple v-model="selectedUpazilas" @change="filterMap">
+                    <option v-for="upazila in upazilas" :value="upazila.feature_id">{{ upazila.name }}</option>
+                </select>
+            </div>
+            <div class="mb-3">
+                <label for="cpi-office-filter" class="form-label">CPI Office</label>
+                <select id="cpi-office-filter" class="form-select" multiple v-model="selectedOffices" @change="filterMap">
+                    <option v-for="office in cpiOffices" :value="office.feature_id">{{ office.name }}</option>
+                </select>
+            </div>
+            <div class="mb-3">
+                <label class="form-label">Admin Levels</label>
+                <div v-for="level in adminLevels" class="form-check">
+                    <input type="checkbox" class="form-check-input" :id="'level-' + level" v-model="visibleLayers[level]" @change="toggleLayer(level)">
+                    <label class="form-check-label" :for="'level-' + level">Level {{ level }}</label>
+                </div>
+            </div>
+            <div class="mb-3">
+                <label for="basemap-selector" class="form-label">Basemap</label>
+                <select id="basemap-selector" class="form-select" v-model="basemap" @change="changeBasemap">
+                    <option value="osm">OpenStreetMap</option>
+                    <option value="satellite">Satellite</option>
+                    <option value="topography">Topography</option>
+                </select>
+            </div>
+            <div class="form-check">
+                <input type="checkbox" class="form-check-input" id="terrain-toggle" v-model="terrainEnabled" @change="toggleTerrain">
+                <label class="form-check-label" for="terrain-toggle">3D Terrain</label>
+            </div>
+        </div>
+        <button class="btn btn-primary reset-btn" @click="resetMap">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-arrow-counterclockwise" viewBox="0 0 16 16">
+                <path fill-rule="evenodd" d="M8 3a5 5 0 1 1-4.546 2.914.5.5 0 0 0-.908-.417A6 6 0 1 0 8 2v1z"/>
+                <path d="M8 4.466V.534a.25.25 0 0 0-.41-.192L5.23 2.308a.25.25 0 0 0 0 .384l2.36 1.966A.25.25 0 0 0 8 4.466z"/>
+            </svg>
+            Reset
+        </button>
+        <div id="map"></div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/vue@3.2.45/dist/vue.global.prod.js"></script>
+    <script src="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        const { createApp } = Vue;
+
+        createApp({
+            data() {
+                return {
+                    map: null,
+                    districts: [],
+                    upazilas: [],
+                    cpiOffices: [],
+                    selectedDistricts: [],
+                    selectedUpazilas: [],
+                    selectedOffices: [],
+                    visibleLayers: {
+                        0: true,
+                        1: true,
+                        2: false,
+                        3: false,
+                        4: false,
+                        5: false,
+                        6: false,
+                        7: false
+                    },
+                    basemap: 'osm',
+                    terrainEnabled: false,
+                    adminLevels: [0, 1, 2, 3, 4, 5, 6, 7]
+                };
+            },
+            methods: {
+                async initializeMap() {
+                    this.map = new maplibregl.Map({
+                        container: 'map',
+                        style: 'https://demotiles.maplibre.org/style.json',
+                        center: [90.36, 23.68],
+                        zoom: 7,
+                        pitch: 45
+                    });
+
+                    this.map.addControl(new maplibregl.NavigationControl());
+
+                    this.map.on('load', async () => {
+                        // Load GeoJSON and metadata
+                        const levels = [0, 1, 2, 3, 4, 5, 6, 7];
+                        for (let level of levels) {
+                            const geojson = await fetch(`assets/data/level${level}.geojson`).then(res => res.json());
+                            const metadata = await fetch(`assets/data/level${level}.json`).then(res => res.json());
+
+                            if (level === 2) this.districts = metadata;
+                            if (level === 3) this.upazilas = metadata;
+
+                            this.map.addSource(`level${level}`, { type: 'geojson', data: geojson });
+                            this.map.addLayer({
+                                id: `level${level}`,
+                                type: 'fill',
+                                source: `level${level}`,
+                                paint: {
+                                    'fill-color': [
+                                        'interpolate',
+                                        ['linear'],
+                                        ['zoom'],
+                                        7, ['case', ['==', ['get', 'feature_id'], '1'], '#FF0000', '#00FF00'],
+                                        10, ['case', ['==', ['get', 'feature_id'], '1'], '#FF5555', '#55FF55']
+                                    ],
+                                    'fill-opacity': 0.6,
+                                    'fill-outline-color': '#000000'
+                                },
+                                layout: { visibility: this.visibleLayers[level] ? 'visible' : 'none' }
+                            });
+
+                            this.map.on('click', `level${level}`, (e) => {
+                                const feature = e.features[0];
+                                const meta = metadata.find(m => m.feature_id === feature.properties.feature_id);
+                                const logos = meta.logo_id.split(',').map(id => `<img src="assets/logos/${id}.png" style="max-width: 100px; height: auto;">`).join('');
+                                new maplibregl.Popup()
+                                    .setLngLat(e.lngLat)
+                                    .setHTML(`
+                                        <h3>${meta.name}</h3>
+                                        <h5>${meta.thematic_program}</h5>
+                                        <table class="table table-sm">
+                                            <tr><th>Description</th><td>${meta.description}</td></tr>
+                                        </table>
+                                        ${logos}
+                                    `)
+                                    .addTo(this.map);
+                            });
+                        }
+
+                        // Load placemarks
+                        const camps = await fetch('assets/data/camps.json').then(res => res.json());
+                        const offices = await fetch('assets/data/cpi_office.json').then(res => res.json());
+                        this.cpiOffices = offices.features;
+
+                        for (let placemark of [camps, offices]) {
+                            const sourceId = placemark === camps ? 'camps' : 'cpi_office';
+                            this.map.addSource(sourceId, { type: 'geojson', data: placemark });
+                            this.map.addLayer({
+                                id: sourceId,
+                                type: 'symbol',
+                                source: sourceId,
+                                layout: {
+                                    'icon-image': ['get', 'icon_id'],
+                                    'icon-size': 0.5,
+                                    'icon-allow-overlap': true
+                                }
+                            });
+
+                            this.map.on('click', sourceId, (e) => {
+                                const feature = e.features[0];
+                                new maplibregl.Popup()
+                                    .setLngLat(e.lngLat)
+                                    .setHTML(`
+                                        <h3>${feature.properties.name}</h3>
+                                        <h5>${feature.properties.place_id}</h5>
+                                        <table class="table table-sm">
+                                            <tr><th>Type</th><td>${feature.properties.type}</td></tr>
+                                            <tr><th>Coordinates</th><td>${e.lngLat.lat.toFixed(4)}, ${e.lngLat.lng.toFixed(4)}</td></tr>
+                                        </table>
+                                    `)
+                                    .addTo(this.map);
+                            });
+                        }
+
+                        // Load icons
+                        for (let i = 1; i <= 15; i++) {
+                            this.map.loadImage(`assets/icons/icon${i}.ico`, (error, image) => {
+                                if (!error) this.map.addImage(`icon${i}`, image);
+                            });
+                        }
+                    });
+                },
+                filterMap() {
+                    const filters = ['all'];
+                    if (this.selectedDistricts.length) {
+                        filters.push(['in', 'feature_id', ...this.selectedDistricts]);
+                    }
+                    if (this.selectedUpazilas.length) {
+                        filters.push(['in', 'feature_id', ...this.selectedUpazilas]);
+                    }
+                    if (this.selectedOffices.length) {
+                        filters.push(['in', 'feature_id', ...this.selectedOffices]);
+                    }
+
+                    for (let level = 2; level <= 3; level++) {
+                        this.map.setFilter(`level${level}`, filters.length > 1 ? filters : null);
+                    }
+                    this.map.setFilter('cpi_office', this.selectedOffices.length ? ['in', 'feature_id', ...this.selectedOffices] : null);
+
+                    // Auto-zoom to selected features
+                    if (filters.length > 1) {
+                        const bounds = new maplibregl.LngLatBounds();
+                        ['level2', 'level3', 'cpi_office'].forEach(source => {
+                            const features = this.map.querySourceFeatures(source, { filter: filters });
+                            features.forEach(f => {
+                                if (f.geometry.type === 'Point') {
+                                    bounds.extend(f.geometry.coordinates);
+                                } else {
+                                    f.geometry.coordinates[0].forEach(coord => bounds.extend(coord));
+                                }
+                            });
+                        });
+                        if (!bounds.isEmpty()) {
+                            this.map.fitBounds(bounds, { padding: 50 });
+                        }
+                    }
+                },
+                toggleLayer(level) {
+                    for (let i = 0; i <= 7; i++) {
+                        this.map.setLayoutProperty(`level${i}`, 'visibility', this.visibleLayers[i] ? 'visible' : 'none');
+                    }
+                },
+                changeBasemap() {
+                    const styles = {
+                        osm: 'https://demotiles.maplibre.org/style.json',
+                        satellite: 'https://tiles.stadiamaps.com/styles/alidade_satellite.json',
+                        topography: 'https://tiles.stadiamaps.com/styles/outdoors.json'
+                    };
+                    this.map.setStyle(styles[this.basemap]);
+                    this.map.once('styledata', () => {
+                        // Re-add layers after style change
+                        for (let level = 0; level <= 7; level++) {
+                            if (this.map.getSource(`level${level}`)) {
+                                this.map.addLayer({
+                                    id: `level${level}`,
+                                    type: 'fill',
+                                    source: `level${level}`,
+                                    paint: {
+                                        'fill-color': [
+                                            'interpolate',
+                                            ['linear'],
+                                            ['zoom'],
+                                            7, ['case', ['==', ['get', 'feature_id'], '1'], '#FF0000', '#00FF00'],
+                                            10, ['case', ['==', ['get', 'feature_id'], '1'], '#FF5555', '#55FF55']
+                                        ],
+                                        'fill-opacity': 0.6,
+                                        'fill-outline-color': '#000000'
+                                    },
+                                    layout: { visibility: this.visibleLayers[level] ? 'visible' : 'none' }
+                                });
+                            }
+                        }
+                        ['camps', 'cpi_office'].forEach(source => {
+                            if (this.map.getSource(source)) {
+                                this.map.addLayer({
+                                    id: source,
+                                    type: 'symbol',
+                                    source: source,
+                                    layout: {
+                                        'icon-image': ['get', 'icon_id'],
+                                        'icon-size': 0.5,
+                                        'icon-allow-overlap': true
+                                    }
+                                });
+                            }
+                        });
+                    });
+                },
+                toggleTerrain() {
+                    if (this.terrainEnabled) {
+                        this.map.addSource('terrain', {
+                            type: 'raster-dem',
+                            url: 'https://demotiles.maplibre.org/terrain.json'
+                        });
+                        this.map.setTerrain({ source: 'terrain', exaggeration: 1.5 });
+                    } else {
+                        this.map.setTerrain(null);
+                    }
+                },
+                resetMap() {
+                    this.selectedDistricts = [];
+                    this.selectedUpazilas = [];
+                    this.selectedOffices = [];
+                    this.visibleLayers = { 0: true, 1: true, 2: false, 3: false, 4: false, 5: false, 6: false, 7: false };
+                    this.basemap = 'osm';
+                    this.terrainEnabled = false;
+                    this.map.setStyle('https://demotiles.maplibre.org/style.json');
+                    this.map.flyTo({ center: [90.36, 23.68], zoom: 7, pitch: 45 });
+                    this.toggleLayer(0);
+                }
+            },
+            mounted() {
+                this.initializeMap();
+            }
+        }).mount('#app');
+    </script>
+</body>
+</html>

@@ -1,346 +1,419 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CPI Bangladesh Mission Map</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.css" rel="stylesheet">
-    <style>
-        body { margin: 0; padding: 0; }
-        #map { position: absolute; top: 70px; bottom: 0; width: 100%; }
-        .header { 
-            background: #ffffff; 
-            padding: 10px; 
-            text-align: center; 
-            position: fixed; 
-            width: 100%; 
-            z-index: 1000;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        }
-        .subheader { font-size: 1.2rem; color: #333; }
-        .theme-logos img { height: 30px; margin: 5px; }
-        .control-panel { 
-            position: absolute; 
-            top: 100px; 
-            left: 10px; 
-            background: white; 
-            padding: 15px; 
-            border-radius: 5px; 
-            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
-            z-index: 1000;
-        }
-        .reset-btn {
-            position: absolute;
-            top: 10px;
-            right: 10px;
-            z-index: 1001;
-        }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CPI Bangladesh Mission Map</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.css" rel="stylesheet">
+  <style>
+    body { margin: 0; padding: 0; }
+    #map { position: absolute; top: 110px; bottom: 0; width: 100%; }
+    .header {
+      background: #fff;
+      padding: 10px;
+      text-align: center;
+      position: fixed;
+      width: 100%;
+      z-index: 1000;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    .header img { height: 70px; }
+    .subheader { font-size: 1.2rem; color: #333; }
+    .theme-logos img { height: 35px; margin: 5px; }
+    .control-panel {
+      position: absolute;
+      top: 120px;
+      left: 10px;
+      background: #fff;
+      padding: 15px;
+      border-radius: 5px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+      z-index: 1000;
+      width: 260px;
+    }
+    .reset-btn {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      z-index: 1001;
+    }
+  </style>
 </head>
 <body>
-    <div id="app">
-        <div class="header">
-            <img src="assets/logos/cpi_logo.png" alt="CPI Logo" style="height: 40px; vertical-align: middle;">
-            <h1>CPI Bangladesh Mission Map</h1>
-            <div class="subheader">Thematic Presence in Bangladesh</div>
-            <div class="theme-logos">
-                <img src="assets/logos/logo0.png" alt="Health and Nutrition">
-                <img src="assets/logos/logo1.png" alt="Sustainable Development">
-                <img src="assets/logos/logo2.png" alt="Research and Learning">
-                <img src="assets/logos/logo3.png" alt="Emergency Response">
-            </div>
-        </div>
-        <div class="control-panel">
-            <div class="mb-3">
-                <label for="district-filter" class="form-label">District</label>
-                <select id="district-filter" class="form-select" multiple v-model="selectedDistricts" @change="filterMap">
-                    <option v-for="district in districts" :value="district.feature_id">{{ district.name }}</option>
-                </select>
-            </div>
-            <div class="mb-3">
-                <label for="upazila-filter" class="form-label">Upazila</label>
-                <select id="upazila-filter" class="form-select" multiple v-model="selectedUpazilas" @change="filterMap">
-                    <option v-for="upazila in upazilas" :value="upazila.feature_id">{{ upazila.name }}</option>
-                </select>
-            </div>
-            <div class="mb-3">
-                <label for="cpi-office-filter" class="form-label">CPI Office</label>
-                <select id="cpi-office-filter" class="form-select" multiple v-model="selectedOffices" @change="filterMap">
-                    <option v-for="office in cpiOffices" :value="office.feature_id">{{ office.name }}</option>
-                </select>
-            </div>
-            <div class="mb-3">
-                <label class="form-label">Admin Levels</label>
-                <div v-for="level in adminLevels" class="form-check">
-                    <input type="checkbox" class="form-check-input" :id="'level-' + level" v-model="visibleLayers[level]" @change="toggleLayer(level)">
-                    <label class="form-check-label" :for="'level-' + level">Level {{ level }}</label>
-                </div>
-            </div>
-            <div class="mb-3">
-                <label for="basemap-selector" class="form-label">Basemap</label>
-                <select id="basemap-selector" class="form-select" v-model="basemap" @change="changeBasemap">
-                    <option value="osm">OpenStreetMap</option>
-                    <option value="satellite">Satellite</option>
-                    <option value="topography">Topography</option>
-                </select>
-            </div>
-            <div class="form-check">
-                <input type="checkbox" class="form-check-input" id="terrain-toggle" v-model="terrainEnabled" @change="toggleTerrain">
-                <label class="form-check-label" for="terrain-toggle">3D Terrain</label>
-            </div>
-        </div>
-        <button class="btn btn-primary reset-btn" @click="resetMap">
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-arrow-counterclockwise" viewBox="0 0 16 16">
-                <path fill-rule="evenodd" d="M8 3a5 5 0 1 1-4.546 2.914.5.5 0 0 0-.908-.417A6 6 0 1 0 8 2v1z"/>
-                <path d="M8 4.466V.534a.25.25 0 0 0-.41-.192L5.23 2.308a.25.25 0 0 0 0 .384l2.36 1.966A.25.25 0 0 0 8 4.466z"/>
-            </svg>
-            Reset
-        </button>
-        <div id="map"></div>
+  <div id="app">
+    <!-- Header -->
+    <div class="header">
+      <img src="assets/logos/cpi_logo.png" alt="CPI Logo">
+      <h1>CPI Bangladesh Mission Map</h1>
+      <div class="subheader">Thematic Presence in Bangladesh</div>
+      <div class="theme-logos">
+        <img src="assets/logos/health_nutrition_logo.png" alt="Health & Nutrition">
+        <img src="assets/logos/education_logo.png" alt="Education">
+        <img src="assets/logos/sustainable_logo.png" alt="Sustainable">
+        <img src="assets/logos/research_logo.png" alt="Research">
+        <img src="assets/logos/wash_logo.png" alt="WASH">
+        <img src="assets/logos/livelihood_logo.png" alt="Livelihood">
+        <img src="assets/logos/hp_logo.png" alt="HP">
+        <img src="assets/logos/hss_logo.png" alt="HSS">
+        <img src="assets/logos/outreach_logo.png" alt="Outreach">
+        <img src="assets/logos/emergency_logo.png" alt="Emergency">
+      </div>
     </div>
+    <!-- Control Panel -->
+    <div class="control-panel">
+      <div class="mb-3">
+        <label for="division-filter" class="form-label">Division</label>
+        <select id="division-filter" class="form-select" multiple v-model="selectedDivisions" @change="onDivisionChange">
+          <option v-for="div in divisionOptions" :key="div.feature_id" :value="div.feature_id">{{ div.name }}</option>
+        </select>
+      </div>
+      <div class="mb-3">
+        <label for="district-filter" class="form-label">District</label>
+        <select id="district-filter" class="form-select" multiple v-model="selectedDistricts" @change="onDistrictChange">
+          <option v-for="dist in filteredDistrictOptions" :key="dist.feature_id" :value="dist.feature_id">{{ dist.name }}</option>
+        </select>
+      </div>
+      <div class="mb-3">
+        <label for="upazila-filter" class="form-label">Upazila</label>
+        <select id="upazila-filter" class="form-select" multiple v-model="selectedUpazilas" @change="onUpazilaChange">
+          <option v-for="upa in filteredUpazilaOptions" :key="upa.feature_id" :value="upa.feature_id">{{ upa.name }}</option>
+        </select>
+      </div>
+    </div>
+    <button class="btn btn-primary reset-btn" @click="resetMap">
+      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-arrow-counterclockwise" viewBox="0 0 16 16">
+        <path fill-rule="evenodd" d="M8 3a5 5 0 1 1-4.546 2.914.5.5 0 0 0-.908-.417A6 6 0 1 0 8 2v1z"/>
+        <path d="M8 4.466V.534a.25.25 0 0 0-.41-.192L5.23 2.308a.25.25 0 0 0 0 .384l2.36 1.966A.25.25 0 0 0 8 4.466z"/>
+      </svg>
+      Reset
+    </button>
+    <div id="map"></div>
+  </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/vue@3.2.45/dist/vue.global.prod.js"></script>
-    <script src="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script>
-        const { createApp } = Vue;
+  <script src="https://cdn.jsdelivr.net/npm/vue@3.2.45/dist/vue.global.prod.js"></script>
+  <script src="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.js"></script>
+  <script>
+  const { createApp } = Vue;
+  createApp({
+    data() {
+      return {
+        map: null,
+        // Filters
+        divisionOptions: [],
+        districtOptions: [],
+        upazilaOptions: [],
+        selectedDivisions: [],
+        selectedDistricts: [],
+        selectedUpazilas: [],
+        filteredDistrictOptions: [],
+        filteredUpazilaOptions: [],
+        // Data
+        geojsons: {},
+        metadatas: {},
+        // For logo loading
+        loadedLogos: {},
+        loadedIcons: {}
+      };
+    },
+    methods: {
+      async initializeMap() {
+        this.map = new maplibregl.Map({
+          container: 'map',
+          style: 'https://demotiles.maplibre.org/style.json',
+          center: [90.36, 23.68],
+          zoom: 7,
+          pitch: 0
+        });
+        this.map.addControl(new maplibregl.NavigationControl());
 
-        createApp({
-            data() {
-                return {
-                    map: null,
-                    districts: [],
-                    upazilas: [],
-                    cpiOffices: [],
-                    selectedDistricts: [],
-                    selectedUpazilas: [],
-                    selectedOffices: [],
-                    visibleLayers: {
-                        0: true,
-                        1: true,
-                        2: false,
-                        3: false,
-                        4: false,
-                        5: false,
-                        6: false,
-                        7: false
-                    },
-                    basemap: 'osm',
-                    terrainEnabled: false,
-                    adminLevels: [0, 1, 2, 3, 4, 5, 6, 7]
-                };
-            },
-            methods: {
-                async initializeMap() {
-                    this.map = new maplibregl.Map({
-                        container: 'map',
-                        style: 'https://demotiles.maplibre.org/style.json',
-                        center: [90.36, 23.68],
-                        zoom: 7,
-                        pitch: 45
-                    });
+        // Load all geojson and metadata for levels 0-7
+        for (let level = 0; level <= 7; level++) {
+          this.geojsons['level'+level] = await fetch(`assets/data/level${level}.geojson`).then(r=>r.json());
+          this.metadatas['level'+level] = await fetch(`assets/data/level${level}.json`).then(r=>r.json());
+        }
 
-                    this.map.addControl(new maplibregl.NavigationControl());
+        // Prepare filter options using metadata (level1=div, level2=dist, level3=upa)
+        this.divisionOptions = this.metadatas.level1.map(obj => ({ feature_id: obj.feature_id, name: obj.name }));
+        this.districtOptions = this.metadatas.level2.map(obj => ({ feature_id: obj.feature_id, name: obj.name, parent_id: obj.parent_id }));
+        this.upazilaOptions = this.metadatas.level3.map(obj => ({ feature_id: obj.feature_id, name: obj.name, parent_id: obj.parent_id }));
+        this.filteredDistrictOptions = this.districtOptions;
+        this.filteredUpazilaOptions = this.upazilaOptions;
 
-                    this.map.on('load', async () => {
-                        const levels = [0, 1, 2, 3, 4, 5, 6, 7];
-                        for (let level of levels) {
-                            const geojson = await fetch(`assets/data/level${level}.geojson`).then(res => res.json());
-                            const metadata = await fetch(`assets/data/level${level}.json`).then(res => res.json());
+        // Map layers for levels 0-7
+        for (let level = 0; level <= 7; level++) {
+          const geojson = this.geojsons['level'+level];
+          const meta = this.metadatas['level'+level];
 
-                            if (level === 2) this.districts = metadata;
-                            if (level === 3) this.upazilas = metadata;
-
-                            this.map.addSource(`level${level}`, { type: 'geojson', data: geojson });
-                            this.map.addLayer({
-                                id: `level${level}`,
-                                type: 'fill',
-                                source: `level${level}`,
-                                paint: {
-                                    'fill-color': [
-                                        'interpolate',
-                                        ['linear'],
-                                        ['zoom'],
-                                        7, ['case', ['==', ['get', 'feature_id'], '1'], '#FF0000', '#00FF00'],
-                                        10, ['case', ['==', ['get', 'feature_id'], '1'], '#FF5555', '#55FF55']
-                                    ],
-                                    'fill-opacity': 0.6,
-                                    'fill-outline-color': '#000000'
-                                },
-                                layout: { visibility: this.visibleLayers[level] ? 'visible' : 'none' }
-                            });
-
-                            this.map.on('click', `level${level}`, (e) => {
-                                const feature = e.features[0];
-                                const meta = metadata.find(m => m.feature_id === feature.properties.feature_id);
-                                const logos = meta.logo_id.split(',').map(id => `<img src="assets/logos/${id}.png" style="max-width: 100px; height: auto;">`).join('');
-                                new maplibregl.Popup()
-                                    .setLngLat(e.lngLat)
-                                    .setHTML(`
-                                        <h3>${meta.name}</h3>
-                                        <h5>${meta.thematic_program}</h5>
-                                        <table class="table table-sm">
-                                            <tr><th>Description</th><td>${meta.description}</td></tr>
-                                        </table>
-                                        ${logos}
-                                    `)
-                                    .addTo(this.map);
-                            });
-                        }
-
-                        const camps = await fetch('assets/data/camps.json').then(res => res.json());
-                        const offices = await fetch('assets/data/cpi_office.json').then(res => res.json());
-                        this.cpiOffices = offices.features;
-
-                        for (let placemark of [camps, offices]) {
-                            const sourceId = placemark === camps ? 'camps' : 'cpi_office';
-                            this.map.addSource(sourceId, { type: 'geojson', data: placemark });
-                            this.map.addLayer({
-                                id: sourceId,
-                                type: 'symbol',
-                                source: sourceId,
-                                layout: {
-                                    'icon-image': ['get', 'icon_id'],
-                                    'icon-size': 0.5,
-                                    'icon-allow-overlap': true
-                                }
-                            });
-
-                            this.map.on('click', sourceId, (e) => {
-                                const feature = e.features[0];
-                                new maplibregl.Popup()
-                                    .setLngLat(e.lngLat)
-                                    .setHTML(`
-                                        <h3>${feature.properties.name}</h3>
-                                        <h5>${feature.properties.place_id}</h5>
-                                        <table class="table table-sm">
-                                            <tr><th>Type</th><td>${feature.properties.type}</td></tr>
-                                            <tr><th>Coordinates</th><td>${e.lngLat.lat.toFixed(4)}, ${e.lngLat.lng.toFixed(4)}</td></tr>
-                                        </table>
-                                    `)
-                                    .addTo(this.map);
-                            });
-                        }
-
-                        for (let i = 1; i <= 15; i++) {
-                            this.map.loadImage(`assets/icons/icon${i}.ico`, (error, image) => {
-                                if (!error) this.map.addImage(`icon${i}`, image);
-                            });
-                        }
-                    });
-                },
-                filterMap() {
-                    const filters = ['all'];
-                    if (this.selectedDistricts.length) {
-                        filters.push(['in', 'feature_id', ...this.selectedDistricts]);
-                    }
-                    if (this.selectedUpazilas.length) {
-                        filters.push(['in', 'feature_id', ...this.selectedUpazilas]);
-                    }
-                    if (this.selectedOffices.length) {
-                        filters.push(['in', 'feature_id', ...this.selectedOffices]);
-                    }
-
-                    for (let level = 2; level <= 3; level++) {
-                        this.map.setFilter(`level${level}`, filters.length > 1 ? filters : null);
-                    }
-                    this.map.setFilter('cpi_office', this.selectedOffices.length ? ['in', 'feature_id', ...this.selectedOffices] : null);
-
-                    if (filters.length > 1) {
-                        const bounds = new maplibregl.LngLatBounds();
-                        ['level2', 'level3', 'cpi_office'].forEach(source => {
-                            const features = this.map.querySourceFeatures(source, { filter: filters });
-                            features.forEach(f => {
-                                if (f.geometry.type === 'Point') {
-                                    bounds.extend(f.geometry.coordinates);
-                                } else {
-                                    f.geometry.coordinates[0].forEach(coord => bounds.extend(coord));
-                                }
-                            });
-                        });
-                        if (!bounds.isEmpty()) {
-                            this.map.fitBounds(bounds, { padding: 50 });
-                        }
-                    }
-                },
-                toggleLayer(level) {
-                    for (let i = 0; i <= 7; i++) {
-                        this.map.setLayoutProperty(`level${i}`, 'visibility', this.visibleLayers[i] ? 'visible' : 'none');
-                    }
-                },
-                changeBasemap() {
-                    const styles = {
-                        osm: 'https://demotiles.maplibre.org/style.json',
-                        satellite: 'https://tiles.stadiamaps.com/styles/alidade_satellite.json',
-                        topography: 'https://tiles.stadiamaps.com/styles/outdoors.json'
-                    };
-                    this.map.setStyle(styles[this.basemap]);
-                    this.map.once('styledata', () => {
-                        for (let level = 0; level <= 7; level++) {
-                            if (this.map.getSource(`level${level}`)) {
-                                this.map.addLayer({
-                                    id: `level${level}`,
-                                    type: 'fill',
-                                    source: `level${level}`,
-                                    paint: {
-                                        'fill-color': [
-                                            'interpolate',
-                                            ['linear'],
-                                            ['zoom'],
-                                            7, ['case', ['==', ['get', 'feature_id'], '1'], '#FF0000', '#00FF00'],
-                                            10, ['case', ['==', ['get', 'feature_id'], '1'], '#FF5555', '#55FF55']
-                                        ],
-                                        'fill-opacity': 0.6,
-                                        'fill-outline-color': '#000000'
-                                    },
-                                    layout: { visibility: this.visibleLayers[level] ? 'visible' : 'none' }
-                                });
-                            }
-                        }
-                        ['camps', 'cpi_office'].forEach(source => {
-                            if (this.map.getSource(source)) {
-                                this.map.addLayer({
-                                    id: source,
-                                    type: 'symbol',
-                                    source: source,
-                                    layout: {
-                                        'icon-image': ['get', 'icon_id'],
-                                        'icon-size': 0.5,
-                                        'icon-allow-overlap': true
-                                    }
-                                });
-                            }
-                        });
-                    });
-                },
-                toggleTerrain() {
-                    if (this.terrainEnabled) {
-                        this.map.addSource('terrain', {
-                            type: 'raster-dem',
-                            url: 'https://demotiles.maplibre.org/terrain.json'
-                        });
-                        this.map.setTerrain({ source: 'terrain', exaggeration: 1.5 });
-                    } else {
-                        this.map.setTerrain(null);
-                    }
-                },
-                resetMap() {
-                    this.selectedDistricts = [];
-                    this.selectedUpazilas = [];
-                    this.selectedOffices = [];
-                    this.visibleLayers = { 0: true, 1: true, 2: false, 3: false, 4: false, 5: false, 6: false, 7: false };
-                    this.basemap = 'osm';
-                    this.terrainEnabled = false;
-                    this.map.setStyle('https://demotiles.maplibre.org/style.json');
-                    this.map.flyTo({ center: [90.36, 23.68], zoom: 7, pitch: 45 });
-                    this.toggleLayer(0);
-                }
-            },
-            mounted() {
-                this.initializeMap();
+          // Merge metadata into geojson features
+          geojson.features.forEach(f => {
+            const m = meta.find(m => m.feature_id == f.properties.feature_id);
+            if (m) {
+              Object.assign(f.properties, m);
+              f.properties.fillColor = this.colorFor(f.properties.feature_id, level);
+              if (f.properties.logo_id) f.properties.logoSym = f.properties.logo_id.replace('.png', '');
             }
-        }).mount('#app');
-    </script>
+          });
+
+          // Add fill layer
+          this.map.addSource(`level${level}`, { type: 'geojson', data: geojson });
+          this.map.addLayer({
+            id: `level${level}-fill`,
+            type: 'fill',
+            source: `level${level}`,
+            paint: {
+              'fill-color': ['get', 'fillColor'],
+              'fill-opacity': 0.4,
+              'fill-outline-color': '#000'
+            },
+            layout: { visibility: (level <= 1 ? 'visible' : 'none') }
+          });
+
+          // Add symbol/placemark at centroid with logo (if available)
+          await this.addLogoSymbolsToMap(`level${level}`, geojson, meta, level);
+        }
+
+        // Add CPI Office and Camps
+        await this.addPlacemarkLayers();
+
+        // Update layer visibility on zoom
+        this.map.on('zoom', this.updateLayerVisibility);
+        this.updateLayerVisibility();
+
+        // Popup for map shapes
+        this.map.on('click', e => {
+          const features = this.map.queryRenderedFeatures(e.point, {
+            layers: [
+              'level0-symbol','level1-symbol','level2-symbol','level3-symbol',
+              'level4-symbol','level5-symbol','level6-symbol','level7-symbol'
+            ]
+          });
+          if (features.length > 0) {
+            const f = features[0];
+            let popup = `<h5>${f.properties.name}</h5>`;
+            if (f.properties.thematic_program)
+              popup += `<div><b>${f.properties.thematic_program}</b></div>`;
+            if (f.properties.thematic_project)
+              popup += `<div><b>${f.properties.thematic_project}</b></div>`;
+            if (f.properties.description)
+              popup += `<div>${f.properties.description}</div>`;
+            if (f.properties.logo_id)
+              popup += `<div><img src="assets/logos/${f.properties.logo_id}" style="max-width:70px;max-height:60px"></div>`;
+            new maplibregl.Popup().setLngLat(e.lngLat).setHTML(popup).addTo(this.map);
+          }
+        });
+      },
+
+      // Place symbol at centroid of each feature with name and logo
+      async addLogoSymbolsToMap(sourceId, geojson, meta, level) {
+        // Load all logo images as map icons if not already loaded
+        for (const m of meta) {
+          if (m.logo_id && !this.loadedLogos[m.logo_id]) {
+            await this.loadMapImage(`assets/logos/${m.logo_id}`, m.logo_id.replace('.png',''));
+            this.loadedLogos[m.logo_id] = true;
+          }
+        }
+        // Add centroid points for symbol layer
+        const symbolGeojson = {
+          type: "FeatureCollection",
+          features: geojson.features.map(f => {
+            const centroid = this.centroid(f.geometry);
+            return {
+              type: "Feature",
+              geometry: { type: "Point", coordinates: centroid },
+              properties: { ...f.properties }
+            };
+          }).filter(f => f.properties.logo_id)
+        };
+        this.map.addSource(`${sourceId}-symbol`, { type: 'geojson', data: symbolGeojson });
+        this.map.addLayer({
+          id: `${sourceId}-symbol`,
+          type: 'symbol',
+          source: `${sourceId}-symbol`,
+          layout: {
+            'icon-image': ['get', 'logoSym'],
+            'icon-size': Math.max(0.18 - 0.013*level, 0.07),
+            'icon-allow-overlap': true,
+            'text-field': ['get', 'name'],
+            'text-size': Math.max(13 - level, 9),
+            'text-anchor': 'top',
+            'text-offset': [0, 1.4]
+          }
+        });
+      },
+
+      async addPlacemarkLayers() {
+        // Load icons for offices/camps
+        const iconList = [
+          "checkpost.ico","cic.ico","clinic.ico","cpi.ico","education.ico","health.ico","health_post.ico","hospital.ico","hp.ico","hss.ico","military.ico","outreach.ico","police_camp.ico","spe_health_facility.ico","wash.ico"
+        ];
+        for (let icon of iconList) {
+          if (!this.loadedIcons[icon]) {
+            await this.loadMapImage(`assets/icons/${icon}`, icon.replace('.ico',''));
+            this.loadedIcons[icon] = true;
+          }
+        }
+        // CPI Offices
+        const offices = await fetch('assets/data/cpi_office.json').then(res => res.json());
+        this.map.addSource('cpi_office', { type: 'geojson', data: offices });
+        this.map.addLayer({
+          id: 'cpi_office-layer',
+          type: 'symbol',
+          source: 'cpi_office',
+          layout: {
+            'icon-image': ['get', 'icon_id'],
+            'icon-size': 0.55,
+            'icon-allow-overlap': true,
+            'text-field': ['get', 'name'],
+            'text-size': 13,
+            'text-anchor': 'bottom',
+            'text-offset': [0, 0.7]
+          }
+        });
+        this.map.on('click', 'cpi_office-layer', e => {
+          const f = e.features[0];
+          let popup = `<h5>${f.properties.name}</h5>`;
+          popup += `<div><b>${f.properties.address || ''}</b></div>`;
+          if (f.properties.icon_id)
+            popup += `<div><img src="assets/icons/${f.properties.icon_id}.ico" style="max-width:40px"></div>`;
+          new maplibregl.Popup().setLngLat(e.lngLat).setHTML(popup).addTo(this.map);
+        });
+        // Camps
+        const camps = await fetch('assets/data/camps.json').then(res => res.json());
+        this.map.addSource('camps', { type: 'geojson', data: camps });
+        this.map.addLayer({
+          id: 'camps-layer',
+          type: 'symbol',
+          source: 'camps',
+          layout: {
+            'icon-image': ['get', 'icon_id'],
+            'icon-size': 0.55,
+            'icon-allow-overlap': true,
+            'text-field': ['get', 'name'],
+            'text-size': 13,
+            'text-anchor': 'bottom',
+            'text-offset': [0, 0.7]
+          }
+        });
+        this.map.on('click', 'camps-layer', e => {
+          const f = e.features[0];
+          let popup = `<h5>${f.properties.name}</h5>`;
+          if (f.properties.icon_id)
+            popup += `<div><img src="assets/icons/${f.properties.icon_id}.ico" style="max-width:40px"></div>`;
+          new maplibregl.Popup().setLngLat(e.lngLat).setHTML(popup).addTo(this.map);
+        });
+      },
+
+      // Util: load image as map icon
+      async loadMapImage(url, name) {
+        return new Promise((resolve, reject) => {
+          this.map.loadImage(url, (error, image) => {
+            if (!error && image) {
+              if (!this.map.hasImage(name)) this.map.addImage(name, image);
+              resolve();
+            } else {
+              resolve();
+            }
+          });
+        });
+      },
+
+      // Util: centroid for symbol placement
+      centroid(geom) {
+        if (geom.type === "Point") return geom.coordinates;
+        if (geom.type === "Polygon") return this.centroidOfCoords(geom.coordinates[0]);
+        if (geom.type === "MultiPolygon") return this.centroidOfCoords(geom.coordinates[0][0]);
+        return [0,0];
+      },
+      centroidOfCoords(coords) {
+        let x = 0, y = 0, n = coords.length;
+        coords.forEach(c => { x += c[0]; y += c[1]; });
+        return [x/n, y/n];
+      },
+      colorFor(id, level) {
+        const colors = [
+          "#e17055","#00b894","#0984e3","#e67e22","#6c5ce7","#fdcb6e","#636e72","#00bcd4",
+          "#2ecc71","#b2bec3","#fd79a8","#e84393","#6ab04c","#fff200","#535c68","#ff7675"
+        ];
+        return colors[(parseInt(id,10) + level) % colors.length];
+      },
+
+      updateLayerVisibility() {
+        const zoom = this.map.getZoom();
+        // Simple scheme: level0 at <7.5, level1 at 6.5-9, level2 at 8.5-10, ... level7 at >15.5
+        const levels = [
+          { level: 0, fill: [0,7.5], symbol: [0,7.5] },
+          { level: 1, fill: [6.5,9.5], symbol: [6.5,9.5] },
+          { level: 2, fill: [8.5,11], symbol: [8.5,11] },
+          { level: 3, fill: [10,12], symbol: [10,12] },
+          { level: 4, fill: [11,13], symbol: [11,13] },
+          { level: 5, fill: [12,14], symbol: [12,14] },
+          { level: 6, fill: [13,15], symbol: [13,15] },
+          { level: 7, fill: [14.5,24], symbol: [14.5,24] },
+        ];
+        for (const l of levels) {
+          const vFill = (zoom >= l.fill[0] && zoom < l.fill[1]) ? 'visible' : 'none';
+          const vSym = (zoom >= l.symbol[0] && zoom < l.symbol[1]) ? 'visible' : 'none';
+          this.map.setLayoutProperty(`level${l.level}-fill`, 'visibility', vFill);
+          this.map.setLayoutProperty(`level${l.level}-symbol`, 'visibility', vSym);
+        }
+      },
+
+      // Filter logic
+      onDivisionChange() {
+        if (this.selectedDivisions.length === 0) {
+          this.filteredDistrictOptions = this.districtOptions;
+        } else {
+          this.filteredDistrictOptions = this.districtOptions.filter(d => this.selectedDivisions.includes(d.parent_id));
+        }
+        this.selectedDistricts = this.selectedDistricts.filter(did => this.filteredDistrictOptions.some(d => d.feature_id === did));
+        this.onDistrictChange();
+        this.filterMap();
+      },
+      onDistrictChange() {
+        if (this.selectedDistricts.length === 0) {
+          this.filteredUpazilaOptions = this.upazilaOptions;
+        } else {
+          this.filteredUpazilaOptions = this.upazilaOptions.filter(u => this.selectedDistricts.includes(u.parent_id));
+        }
+        this.selectedUpazilas = this.selectedUpazilas.filter(uid => this.filteredUpazilaOptions.some(u => u.feature_id === uid));
+        this.filterMap();
+      },
+      onUpazilaChange() {
+        this.filterMap();
+      },
+      filterMap() {
+        // Only apply filters for levels 1,2,3 (Div, Dist, Upazila)
+        if (this.selectedDivisions.length > 0) {
+          this.map.setFilter('level1-symbol', ['in', ['get', 'feature_id'], ['literal', this.selectedDivisions]]);
+        } else {
+          this.map.setFilter('level1-symbol', null);
+        }
+        if (this.selectedDistricts.length > 0) {
+          this.map.setFilter('level2-symbol', ['in', ['get', 'feature_id'], ['literal', this.selectedDistricts]]);
+        } else {
+          this.map.setFilter('level2-symbol', null);
+        }
+        if (this.selectedUpazilas.length > 0) {
+          this.map.setFilter('level3-symbol', ['in', ['get', 'feature_id'], ['literal', this.selectedUpazilas]]);
+        } else {
+          this.map.setFilter('level3-symbol', null);
+        }
+      },
+      resetMap() {
+        this.selectedDivisions = [];
+        this.selectedDistricts = [];
+        this.selectedUpazilas = [];
+        this.filteredDistrictOptions = this.districtOptions;
+        this.filteredUpazilaOptions = this.upazilaOptions;
+        this.filterMap();
+        this.map.flyTo({ center: [90.36, 23.68], zoom: 7, pitch: 0 });
+      }
+    },
+    mounted() {
+      this.initializeMap();
+    }
+  }).mount('#app');
+  </script>
 </body>
 </html>

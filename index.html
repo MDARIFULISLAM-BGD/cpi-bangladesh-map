@@ -2,8 +2,8 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>CPI Bangladesh Mission Map</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
   <link href="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.css" rel="stylesheet">
   <style>
@@ -32,7 +32,6 @@
       box-shadow: 0 2px 4px rgba(0,0,0,0.2);
       z-index: 1000;
       width: 260px;
-      transition: box-shadow .3s;
     }
     .reset-btn {
       position: absolute;
@@ -40,7 +39,6 @@
       right: 18px;
       z-index: 1001;
     }
-    /* Dropdown with checkboxes styling */
     .multi-dropdown {
       position: relative;
       margin-bottom: 1rem;
@@ -62,6 +60,7 @@
       border: 1px solid #ccc;
       border-top: none;
       box-shadow: 0 2px 4px rgba(0,0,0,0.07);
+      padding: 0;
     }
     .multi-dropdown.open .dropdown-menu {
       display: block;
@@ -79,26 +78,33 @@
       top: 0.48rem;
       margin: 0;
     }
-    /* Hide scroll bar for dropdown menu for Chrome, Edge, Safari */
-    .multi-dropdown .dropdown-menu::-webkit-scrollbar {
-      width: 3px;
-      background: #eee;
-    }
-    .multi-dropdown .dropdown-menu::-webkit-scrollbar-thumb {
-      background: #ccc;
-    }
-    /* Responsive for mobile */
     @media (max-width: 700px) {
       .header img.logo-main { height: 70px; }
       .header h1 { font-size: 1.2rem; }
       .subheader { font-size: 1rem; }
       .control-panel { width: 95vw; left: 2vw; top: 170px; }
     }
+    .logo-stack {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 2px;
+    }
+    .logo-stack img {
+      max-width: 45px;
+      max-height: 38px;
+      margin: 0 2px;
+      display: inline-block;
+      background: #fff;
+      border-radius: 4px;
+      border: 1px solid #eee;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.07);
+    }
   </style>
 </head>
 <body>
   <div id="app">
-    <!-- Header -->
     <div class="header">
       <img src="assets/logos/cpi_logo.png" alt="CPI Logo" class="logo-main">
       <h1>CPI Bangladesh Mission Map</h1>
@@ -110,7 +116,6 @@
         <img src="assets/logos/emergency_logo.png" alt="Emergency">
       </div>
     </div>
-    <!-- Control Panel -->
     <div class="control-panel shadow-sm">
       <div class="multi-dropdown" :class="{open: dropdownOpen.division}" @mouseenter="openDropdown('division')" @mouseleave="closeDropdown('division')">
         <label class="form-label">Division</label>
@@ -158,7 +163,6 @@
     </button>
     <div id="map"></div>
   </div>
-  <!-- JS libraries -->
   <script src="https://cdn.jsdelivr.net/npm/vue@3.2.45/dist/vue.global.prod.js"></script>
   <script src="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.js"></script>
   <script>
@@ -184,10 +188,9 @@
     },
     methods: {
       async initializeMap() {
-        // Fit to Bangladesh bounds on load
         const bangladeshBounds = [
-          [88.0, 20.5],   // SW
-          [92.7, 26.7]    // NE
+          [88.0, 20.5],
+          [92.7, 26.7]
         ];
         this.map = new maplibregl.Map({
           container: 'map',
@@ -201,7 +204,7 @@
           this.map.fitBounds(bangladeshBounds, { padding: {top:90, bottom:0, left:0, right:0} });
         });
 
-        // Load all geojson and metadata for levels 0-7
+        // Load all levels geojson/metadata
         for (let level = 0; level <= 7; level++) {
           this.geojsons['level'+level] = await fetch(`assets/data/level${level}.geojson`).then(r=>r.json());
           this.metadatas['level'+level] = await fetch(`assets/data/level${level}.json`).then(r=>r.json());
@@ -223,7 +226,12 @@
             if (m) {
               Object.assign(f.properties, m);
               f.properties.fillColor = this.colorFor(f.properties.feature_id, level);
-              if (f.properties.logo_id) f.properties.logoSym = f.properties.logo_id.replace('.png', '');
+              // Prepare the logoSymArr: array of logo names (without .png)
+              if (f.properties.logo_id && f.properties.logo_id.trim() !== "") {
+                f.properties.logoSymArr = f.properties.logo_id.split(',').map(l => l.trim().replace('.png',''));
+              } else {
+                f.properties.logoSymArr = [];
+              }
             }
           });
           // Add fill layer
@@ -239,7 +247,21 @@
             },
             layout: { visibility: (level <= 1 ? 'visible' : 'none') }
           });
-          // Add symbol/placemark at centroid with logo (if available)
+
+          // Add all logos as map icons (for this level)
+          const logoSet = new Set();
+          meta.forEach(m => {
+            if (m.logo_id && m.logo_id.trim() !== "") {
+              m.logo_id.split(',').forEach(l => logoSet.add(l.trim()));
+            }
+          });
+          for (const logo of logoSet) {
+            if (logo && !this.loadedLogos[logo]) {
+              await this.loadMapImage(`assets/logos/${logo}`, logo.replace('.png',''));
+              this.loadedLogos[logo] = true;
+            }
+          }
+          // Add symbol/placemark at centroid with all logos (if available)
           await this.addLogoSymbolsToMap(`level${level}`, geojson, meta, level);
         }
 
@@ -250,7 +272,7 @@
         this.map.on('zoom', this.updateLayerVisibility);
         this.updateLayerVisibility();
 
-        // Popup for map shapes
+        // Popup for map shapes, show all logos
         this.map.on('click', e => {
           const features = this.map.queryRenderedFeatures(e.point, {
             layers: [
@@ -267,34 +289,40 @@
               popup += `<div><b>${f.properties.thematic_project}</b></div>`;
             if (f.properties.description)
               popup += `<div>${f.properties.description}</div>`;
-            if (f.properties.logo_id)
-              popup += `<div><img src="assets/logos/${f.properties.logo_id}" style="max-width:70px;max-height:60px"></div>`;
+            if (f.properties.logo_id && f.properties.logo_id.trim() !== "") {
+              popup += `<div class="logo-stack">` +
+                f.properties.logo_id.split(',').map(l => `<img src="assets/logos/${l.trim()}" title="${l.trim()}">`).join('') +
+                `</div>`;
+            }
             new maplibregl.Popup().setLngLat(e.lngLat).setHTML(popup).addTo(this.map);
           }
         });
       },
 
-      // Place symbol at centroid of each feature with name and logo
+      // Place all logos for a feature at the centroid, stacked horizontally
       async addLogoSymbolsToMap(sourceId, geojson, meta, level) {
-        // Load all logo images as map icons if not already loaded
-        for (const m of meta) {
-          if (m.logo_id && !this.loadedLogos[m.logo_id]) {
-            await this.loadMapImage(`assets/logos/${m.logo_id}`, m.logo_id.replace('.png',''));
-            this.loadedLogos[m.logo_id] = true;
+        // For each feature, if it has logo(s), add multiple symbol features at the centroid (one for each logo)
+        const symbolFeatures = [];
+        geojson.features.forEach(f => {
+          const centroid = this.centroid(f.geometry);
+          if (f.properties.logoSymArr && f.properties.logoSymArr.length) {
+            f.properties.logoSymArr.forEach((logoSym, idx) => {
+              symbolFeatures.push({
+                type: "Feature",
+                geometry: { type: "Point", coordinates: [
+                  // Offset logos horizontally so they stack (adjust offset as needed)
+                  centroid[0] + (idx - (f.properties.logoSymArr.length-1)/2)*0.04, centroid[1]
+                ]},
+                properties: {
+                  ...f.properties,
+                  logoSym,
+                  name: idx===0 ? f.properties.name : "" // only first logo shows name
+                }
+              });
+            });
           }
-        }
-        // Add centroid points for symbol layer
-        const symbolGeojson = {
-          type: "FeatureCollection",
-          features: geojson.features.map(f => {
-            const centroid = this.centroid(f.geometry);
-            return {
-              type: "Feature",
-              geometry: { type: "Point", coordinates: centroid },
-              properties: { ...f.properties }
-            };
-          }).filter(f => f.properties.logo_id)
-        };
+        });
+        const symbolGeojson = { type: "FeatureCollection", features: symbolFeatures };
         this.map.addSource(`${sourceId}-symbol`, { type: 'geojson', data: symbolGeojson });
         this.map.addLayer({
           id: `${sourceId}-symbol`,
@@ -339,7 +367,8 @@
             'text-anchor': 'bottom',
             'text-offset': [0, 0.7]
           },
-          filter: ["all", [">=", ["zoom"], 6], ["<=", ["zoom"], 16]]
+          minzoom: 7,
+          maxzoom: 16
         });
         this.map.on('click', 'cpi_office-layer', e => {
           const f = e.features[0];
@@ -365,7 +394,8 @@
             'text-anchor': 'bottom',
             'text-offset': [0, 0.7]
           },
-          filter: ["all", [">=", ["zoom"], 12], ["<=", ["zoom"], 16]]
+          minzoom: 12,
+          maxzoom: 16
         });
         this.map.on('click', 'camps-layer', e => {
           const f = e.features[0];
@@ -376,7 +406,6 @@
         });
       },
 
-      // Util: load image as map icon
       async loadMapImage(url, name) {
         return new Promise((resolve, reject) => {
           this.map.loadImage(url, (error, image) => {
@@ -389,8 +418,6 @@
           });
         });
       },
-
-      // Util: centroid for symbol placement
       centroid(geom) {
         if (geom.type === "Point") return geom.coordinates;
         if (geom.type === "Polygon") return this.centroidOfCoords(geom.coordinates[0]);
@@ -412,7 +439,6 @@
 
       updateLayerVisibility() {
         const zoom = this.map.getZoom();
-        // Only one level's symbol visible at a time
         const levels = [
           { level: 0, fill: [0,7.5], symbol: [0,7.5] },
           { level: 1, fill: [6.5,9.5], symbol: [6.5,9.5] },
@@ -426,12 +452,13 @@
         for (const l of levels) {
           const vFill = (zoom >= l.fill[0] && zoom < l.fill[1]) ? 'visible' : 'none';
           const vSym = (zoom >= l.symbol[0] && zoom < l.symbol[1]) ? 'visible' : 'none';
-          this.map.setLayoutProperty(`level${l.level}-fill`, 'visibility', vFill);
-          this.map.setLayoutProperty(`level${l.level}-symbol`, 'visibility', vSym);
+          if (this.map.getLayer(`level${l.level}-fill`))
+            this.map.setLayoutProperty(`level${l.level}-fill`, 'visibility', vFill);
+          if (this.map.getLayer(`level${l.level}-symbol`))
+            this.map.setLayoutProperty(`level${l.level}-symbol`, 'visibility', vSym);
         }
       },
-
-      // Filtering logic for filter dropdowns and auto-zoom/fly
+      // Filter logic and flyTo
       onDivisionChange() {
         if (this.selectedDivisions.length === 0) {
           this.filteredDistrictOptions = this.districtOptions;
@@ -441,7 +468,6 @@
         this.selectedDistricts = this.selectedDistricts.filter(did => this.filteredDistrictOptions.some(d => d.feature_id === did));
         this.onDistrictChange();
         this.filterMap();
-        // Auto zoom/fly to selection
         this.flyToSelection('division');
       },
       onDistrictChange() {
@@ -459,37 +485,41 @@
         this.flyToSelection('upazila');
       },
       filterMap() {
-        // Only apply filters for levels 1,2,3 (Div, Dist, Upazila)
         if (this.selectedDivisions.length > 0) {
-          this.map.setFilter('level1-symbol', ['in', ['get', 'feature_id'], ['literal', this.selectedDivisions]]);
+          if (this.map.getLayer('level1-symbol'))
+            this.map.setFilter('level1-symbol', ['in', ['get', 'feature_id'], ['literal', this.selectedDivisions]]);
         } else {
-          this.map.setFilter('level1-symbol', null);
+          if (this.map.getLayer('level1-symbol'))
+            this.map.setFilter('level1-symbol', null);
         }
         if (this.selectedDistricts.length > 0) {
-          this.map.setFilter('level2-symbol', ['in', ['get', 'feature_id'], ['literal', this.selectedDistricts]]);
+          if (this.map.getLayer('level2-symbol'))
+            this.map.setFilter('level2-symbol', ['in', ['get', 'feature_id'], ['literal', this.selectedDistricts]]);
         } else {
-          this.map.setFilter('level2-symbol', null);
+          if (this.map.getLayer('level2-symbol'))
+            this.map.setFilter('level2-symbol', null);
         }
         if (this.selectedUpazilas.length > 0) {
-          this.map.setFilter('level3-symbol', ['in', ['get', 'feature_id'], ['literal', this.selectedUpazilas]]);
+          if (this.map.getLayer('level3-symbol'))
+            this.map.setFilter('level3-symbol', ['in', ['get', 'feature_id'], ['literal', this.selectedUpazilas]]);
         } else {
-          this.map.setFilter('level3-symbol', null);
+          if (this.map.getLayer('level3-symbol'))
+            this.map.setFilter('level3-symbol', null);
         }
       },
       flyToSelection(level) {
         let features = [];
         if (level === 'division' && this.selectedDivisions.length > 0) {
-          features = this.geojsons.level1.features.filter(f => this.selectedDivisions.includes(f.properties.feature_id));
+          features = (this.geojsons.level1?.features || []).filter(f => this.selectedDivisions.includes(f.properties.feature_id));
         }
         if (level === 'district' && this.selectedDistricts.length > 0) {
-          features = this.geojsons.level2.features.filter(f => this.selectedDistricts.includes(f.properties.feature_id));
+          features = (this.geojsons.level2?.features || []).filter(f => this.selectedDistricts.includes(f.properties.feature_id));
         }
         if (level === 'upazila' && this.selectedUpazilas.length > 0) {
-          features = this.geojsons.level3.features.filter(f => this.selectedUpazilas.includes(f.properties.feature_id));
+          features = (this.geojsons.level3?.features || []).filter(f => this.selectedUpazilas.includes(f.properties.feature_id));
         }
         if (features.length === 0) return;
-        // Compute bounding box of selected features
-        let bbox = [ [999,999], [-999,-999] ]; // [SW, NE]
+        let bbox = [ [999,999], [-999,-999] ];
         features.forEach(f => {
           const coords = (f.geometry.type === "Polygon") ? f.geometry.coordinates[0]
                         : (f.geometry.type === "MultiPolygon") ? f.geometry.coordinates[0][0] : [];
@@ -511,7 +541,6 @@
         this.filteredDistrictOptions = this.districtOptions;
         this.filteredUpazilaOptions = this.upazilaOptions;
         this.filterMap();
-        // Fit map to Bangladesh bounds again
         this.map.flyTo({ center: [90.36, 23.68], zoom: 6.09, pitch: 0 });
         setTimeout(() => {
           this.map.fitBounds([
@@ -520,11 +549,9 @@
           ], { padding: {top:90, bottom:0, left:0, right:0} });
         }, 800);
       },
-      // Dropdown handling for mouseover (interactive show/hide)
       openDropdown(type) { this.dropdownOpen[type] = true; },
       closeDropdown(type) { this.dropdownOpen[type] = false; },
       toggleDropdown(type) { this.dropdownOpen[type] = !this.dropdownOpen[type]; },
-      // Util: get name from id for button labels
       getNameById(id, arr) {
         const obj = arr.find(x => x.feature_id === id);
         return obj ? obj.name : id;

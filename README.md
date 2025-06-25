@@ -35,7 +35,7 @@ Open http://localhost:8000 in a browser.
 
 Go to Settings > Pages in the repository.
 Under Branch, select main and / (root), then click Save.
-Access the deployed map at https://your-username.github.io/cpi-bangladesh-map/.
+Access the deployed map at https://mdarifulislam-bgd.github.io/cpi-bangladesh-map/.
 
 
 

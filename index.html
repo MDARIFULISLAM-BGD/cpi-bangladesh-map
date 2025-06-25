@@ -8,22 +8,23 @@
   <link href="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.css" rel="stylesheet">
   <style>
     body { margin: 0; padding: 0; }
-    #map { position: absolute; top: 110px; bottom: 0; width: 100%; }
+    #map { position: absolute; top: 150px; bottom: 0; width: 100%; }
     .header {
       background: #fff;
-      padding: 10px;
+      padding: 10px 0 0 0;
       text-align: center;
       position: fixed;
       width: 100%;
       z-index: 1000;
       box-shadow: 0 2px 4px rgba(0,0,0,0.1);
     }
-    .header img { height: 70px; }
+    .header img.logo-main { height: 120px; margin-bottom: 5px;}
+    .header h1 { margin-bottom: 0; }
     .subheader { font-size: 1.2rem; color: #333; }
     .theme-logos img { height: 35px; margin: 5px; }
     .control-panel {
       position: absolute;
-      top: 120px;
+      top: 160px;
       left: 10px;
       background: #fff;
       padding: 15px;
@@ -31,12 +32,67 @@
       box-shadow: 0 2px 4px rgba(0,0,0,0.2);
       z-index: 1000;
       width: 260px;
+      transition: box-shadow .3s;
     }
     .reset-btn {
       position: absolute;
-      top: 10px;
-      right: 10px;
+      top: 20px;
+      right: 18px;
       z-index: 1001;
+    }
+    /* Dropdown with checkboxes styling */
+    .multi-dropdown {
+      position: relative;
+      margin-bottom: 1rem;
+    }
+    .multi-dropdown .dropdown-toggle {
+      width: 100%;
+      text-align: left;
+    }
+    .multi-dropdown .dropdown-menu {
+      width: 100%;
+      max-height: 230px;
+      overflow-y: auto;
+      display: none;
+      position: absolute;
+      left: 0;
+      top: 100%;
+      z-index: 1100;
+      background: #fff;
+      border: 1px solid #ccc;
+      border-top: none;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.07);
+    }
+    .multi-dropdown.open .dropdown-menu {
+      display: block;
+    }
+    .multi-dropdown .dropdown-item {
+      cursor: pointer;
+      font-size: 1rem;
+      user-select: none;
+      padding: 0.2rem 0.7rem 0.2rem 1.7rem;
+      position: relative;
+    }
+    .multi-dropdown .dropdown-item input[type="checkbox"] {
+      position: absolute;
+      left: 0.7rem;
+      top: 0.48rem;
+      margin: 0;
+    }
+    /* Hide scroll bar for dropdown menu for Chrome, Edge, Safari */
+    .multi-dropdown .dropdown-menu::-webkit-scrollbar {
+      width: 3px;
+      background: #eee;
+    }
+    .multi-dropdown .dropdown-menu::-webkit-scrollbar-thumb {
+      background: #ccc;
+    }
+    /* Responsive for mobile */
+    @media (max-width: 700px) {
+      .header img.logo-main { height: 70px; }
+      .header h1 { font-size: 1.2rem; }
+      .subheader { font-size: 1rem; }
+      .control-panel { width: 95vw; left: 2vw; top: 170px; }
     }
   </style>
 </head>
@@ -44,7 +100,7 @@
   <div id="app">
     <!-- Header -->
     <div class="header">
-      <img src="assets/logos/cpi_logo.png" alt="CPI Logo">
+      <img src="assets/logos/cpi_logo.png" alt="CPI Logo" class="logo-main">
       <h1>CPI Bangladesh Mission Map</h1>
       <div class="subheader">Thematic Presence in Bangladesh</div>
       <div class="theme-logos">
@@ -55,24 +111,42 @@
       </div>
     </div>
     <!-- Control Panel -->
-    <div class="control-panel">
-      <div class="mb-3">
-        <label for="division-filter" class="form-label">Division</label>
-        <select id="division-filter" class="form-select" multiple v-model="selectedDivisions" @change="onDivisionChange">
-          <option v-for="div in divisionOptions" :key="div.feature_id" :value="div.feature_id">{{ div.name }}</option>
-        </select>
+    <div class="control-panel shadow-sm">
+      <div class="multi-dropdown" :class="{open: dropdownOpen.division}" @mouseenter="openDropdown('division')" @mouseleave="closeDropdown('division')">
+        <label class="form-label">Division</label>
+        <button class="btn btn-outline-secondary dropdown-toggle" @click="toggleDropdown('division')" type="button">
+          {{ selectedDivisions.length ? selectedDivisions.map(id => getNameById(id, divisionOptions)).join(', ') : 'Select Division(s)' }}
+        </button>
+        <ul class="dropdown-menu show">
+          <li v-for="div in divisionOptions" :key="div.feature_id" class="dropdown-item">
+            <input type="checkbox" :value="div.feature_id" v-model="selectedDivisions" @change="onDivisionChange">
+            {{ div.name }}
+          </li>
+        </ul>
       </div>
-      <div class="mb-3">
-        <label for="district-filter" class="form-label">District</label>
-        <select id="district-filter" class="form-select" multiple v-model="selectedDistricts" @change="onDistrictChange">
-          <option v-for="dist in filteredDistrictOptions" :key="dist.feature_id" :value="dist.feature_id">{{ dist.name }}</option>
-        </select>
+      <div class="multi-dropdown" :class="{open: dropdownOpen.district}" @mouseenter="openDropdown('district')" @mouseleave="closeDropdown('district')">
+        <label class="form-label">District</label>
+        <button class="btn btn-outline-secondary dropdown-toggle" @click="toggleDropdown('district')" type="button">
+          {{ selectedDistricts.length ? selectedDistricts.map(id => getNameById(id, filteredDistrictOptions)).join(', ') : 'Select District(s)' }}
+        </button>
+        <ul class="dropdown-menu show">
+          <li v-for="dist in filteredDistrictOptions" :key="dist.feature_id" class="dropdown-item">
+            <input type="checkbox" :value="dist.feature_id" v-model="selectedDistricts" @change="onDistrictChange">
+            {{ dist.name }}
+          </li>
+        </ul>
       </div>
-      <div class="mb-3">
-        <label for="upazila-filter" class="form-label">Upazila</label>
-        <select id="upazila-filter" class="form-select" multiple v-model="selectedUpazilas" @change="onUpazilaChange">
-          <option v-for="upa in filteredUpazilaOptions" :key="upa.feature_id" :value="upa.feature_id">{{ upa.name }}</option>
-        </select>
+      <div class="multi-dropdown" :class="{open: dropdownOpen.upazila}" @mouseenter="openDropdown('upazila')" @mouseleave="closeDropdown('upazila')">
+        <label class="form-label">Upazila</label>
+        <button class="btn btn-outline-secondary dropdown-toggle" @click="toggleDropdown('upazila')" type="button">
+          {{ selectedUpazilas.length ? selectedUpazilas.map(id => getNameById(id, filteredUpazilaOptions)).join(', ') : 'Select Upazila(s)' }}
+        </button>
+        <ul class="dropdown-menu show">
+          <li v-for="upa in filteredUpazilaOptions" :key="upa.feature_id" class="dropdown-item">
+            <input type="checkbox" :value="upa.feature_id" v-model="selectedUpazilas" @change="onUpazilaChange">
+            {{ upa.name }}
+          </li>
+        </ul>
       </div>
     </div>
     <button class="btn btn-primary reset-btn" @click="resetMap">
@@ -84,7 +158,7 @@
     </button>
     <div id="map"></div>
   </div>
-
+  <!-- JS libraries -->
   <script src="https://cdn.jsdelivr.net/npm/vue@3.2.45/dist/vue.global.prod.js"></script>
   <script src="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.js"></script>
   <script>
@@ -93,7 +167,6 @@
     data() {
       return {
         map: null,
-        // Filters
         divisionOptions: [],
         districtOptions: [],
         upazilaOptions: [],
@@ -102,24 +175,31 @@
         selectedUpazilas: [],
         filteredDistrictOptions: [],
         filteredUpazilaOptions: [],
-        // Data
         geojsons: {},
         metadatas: {},
-        // For logo loading
         loadedLogos: {},
-        loadedIcons: {}
+        loadedIcons: {},
+        dropdownOpen: { division: false, district: false, upazila: false }
       };
     },
     methods: {
       async initializeMap() {
+        // Fit to Bangladesh bounds on load
+        const bangladeshBounds = [
+          [88.0, 20.5],   // SW
+          [92.7, 26.7]    // NE
+        ];
         this.map = new maplibregl.Map({
           container: 'map',
           style: 'https://demotiles.maplibre.org/style.json',
           center: [90.36, 23.68],
-          zoom: 7,
+          zoom: 6.09,
           pitch: 0
         });
         this.map.addControl(new maplibregl.NavigationControl());
+        this.map.once('load', () => {
+          this.map.fitBounds(bangladeshBounds, { padding: {top:90, bottom:0, left:0, right:0} });
+        });
 
         // Load all geojson and metadata for levels 0-7
         for (let level = 0; level <= 7; level++) {
@@ -138,8 +218,6 @@
         for (let level = 0; level <= 7; level++) {
           const geojson = this.geojsons['level'+level];
           const meta = this.metadatas['level'+level];
-
-          // Merge metadata into geojson features
           geojson.features.forEach(f => {
             const m = meta.find(m => m.feature_id == f.properties.feature_id);
             if (m) {
@@ -148,7 +226,6 @@
               if (f.properties.logo_id) f.properties.logoSym = f.properties.logo_id.replace('.png', '');
             }
           });
-
           // Add fill layer
           this.map.addSource(`level${level}`, { type: 'geojson', data: geojson });
           this.map.addLayer({
@@ -162,7 +239,6 @@
             },
             layout: { visibility: (level <= 1 ? 'visible' : 'none') }
           });
-
           // Add symbol/placemark at centroid with logo (if available)
           await this.addLogoSymbolsToMap(`level${level}`, geojson, meta, level);
         }
@@ -262,7 +338,8 @@
             'text-size': 13,
             'text-anchor': 'bottom',
             'text-offset': [0, 0.7]
-          }
+          },
+          filter: ["all", [">=", ["zoom"], 6], ["<=", ["zoom"], 16]]
         });
         this.map.on('click', 'cpi_office-layer', e => {
           const f = e.features[0];
@@ -287,7 +364,8 @@
             'text-size': 13,
             'text-anchor': 'bottom',
             'text-offset': [0, 0.7]
-          }
+          },
+          filter: ["all", [">=", ["zoom"], 12], ["<=", ["zoom"], 16]]
         });
         this.map.on('click', 'camps-layer', e => {
           const f = e.features[0];
@@ -334,7 +412,7 @@
 
       updateLayerVisibility() {
         const zoom = this.map.getZoom();
-        // Simple scheme: level0 at <7.5, level1 at 6.5-9, level2 at 8.5-10, ... level7 at >15.5
+        // Only one level's symbol visible at a time
         const levels = [
           { level: 0, fill: [0,7.5], symbol: [0,7.5] },
           { level: 1, fill: [6.5,9.5], symbol: [6.5,9.5] },
@@ -353,7 +431,7 @@
         }
       },
 
-      // Filter logic
+      // Filtering logic for filter dropdowns and auto-zoom/fly
       onDivisionChange() {
         if (this.selectedDivisions.length === 0) {
           this.filteredDistrictOptions = this.districtOptions;
@@ -363,6 +441,8 @@
         this.selectedDistricts = this.selectedDistricts.filter(did => this.filteredDistrictOptions.some(d => d.feature_id === did));
         this.onDistrictChange();
         this.filterMap();
+        // Auto zoom/fly to selection
+        this.flyToSelection('division');
       },
       onDistrictChange() {
         if (this.selectedDistricts.length === 0) {
@@ -372,9 +452,11 @@
         }
         this.selectedUpazilas = this.selectedUpazilas.filter(uid => this.filteredUpazilaOptions.some(u => u.feature_id === uid));
         this.filterMap();
+        this.flyToSelection('district');
       },
       onUpazilaChange() {
         this.filterMap();
+        this.flyToSelection('upazila');
       },
       filterMap() {
         // Only apply filters for levels 1,2,3 (Div, Dist, Upazila)
@@ -394,6 +476,34 @@
           this.map.setFilter('level3-symbol', null);
         }
       },
+      flyToSelection(level) {
+        let features = [];
+        if (level === 'division' && this.selectedDivisions.length > 0) {
+          features = this.geojsons.level1.features.filter(f => this.selectedDivisions.includes(f.properties.feature_id));
+        }
+        if (level === 'district' && this.selectedDistricts.length > 0) {
+          features = this.geojsons.level2.features.filter(f => this.selectedDistricts.includes(f.properties.feature_id));
+        }
+        if (level === 'upazila' && this.selectedUpazilas.length > 0) {
+          features = this.geojsons.level3.features.filter(f => this.selectedUpazilas.includes(f.properties.feature_id));
+        }
+        if (features.length === 0) return;
+        // Compute bounding box of selected features
+        let bbox = [ [999,999], [-999,-999] ]; // [SW, NE]
+        features.forEach(f => {
+          const coords = (f.geometry.type === "Polygon") ? f.geometry.coordinates[0]
+                        : (f.geometry.type === "MultiPolygon") ? f.geometry.coordinates[0][0] : [];
+          coords.forEach(([lon,lat]) => {
+            if (lon < bbox[0][0]) bbox[0][0] = lon;
+            if (lat < bbox[0][1]) bbox[0][1] = lat;
+            if (lon > bbox[1][0]) bbox[1][0] = lon;
+            if (lat > bbox[1][1]) bbox[1][1] = lat;
+          });
+        });
+        if (bbox[0][0] < bbox[1][0] && bbox[0][1] < bbox[1][1]) {
+          this.map.fitBounds(bbox, { padding: 70, maxZoom: (level==='division'?8:(level==='district'?10:12)) });
+        }
+      },
       resetMap() {
         this.selectedDivisions = [];
         this.selectedDistricts = [];
@@ -401,7 +511,23 @@
         this.filteredDistrictOptions = this.districtOptions;
         this.filteredUpazilaOptions = this.upazilaOptions;
         this.filterMap();
-        this.map.flyTo({ center: [90.36, 23.68], zoom: 7, pitch: 0 });
+        // Fit map to Bangladesh bounds again
+        this.map.flyTo({ center: [90.36, 23.68], zoom: 6.09, pitch: 0 });
+        setTimeout(() => {
+          this.map.fitBounds([
+            [88.0, 20.5],
+            [92.7, 26.7]
+          ], { padding: {top:90, bottom:0, left:0, right:0} });
+        }, 800);
+      },
+      // Dropdown handling for mouseover (interactive show/hide)
+      openDropdown(type) { this.dropdownOpen[type] = true; },
+      closeDropdown(type) { this.dropdownOpen[type] = false; },
+      toggleDropdown(type) { this.dropdownOpen[type] = !this.dropdownOpen[type]; },
+      // Util: get name from id for button labels
+      getNameById(id, arr) {
+        const obj = arr.find(x => x.feature_id === id);
+        return obj ? obj.name : id;
       }
     },
     mounted() {

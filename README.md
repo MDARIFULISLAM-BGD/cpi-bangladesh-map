@@ -4,7 +4,7 @@ Interactive web map displaying administrative boundaries and placemarks for CPI 
 Setup Instructions
 
 Clone the Repository (optional for local testing):
-git clone https://github.com/your-username/cpi-bangladesh-map.git
+git clone https://github.com/MDARIFULISLAM-BGD/cpi-bangladesh-map.git
 cd cpi-bangladesh-map
 
 
@@ -12,7 +12,7 @@ cd cpi-bangladesh-map
 
 Ensure all GeoJSON files (level0.geojson to level7.geojson), JSON metadata files (level0.json to level7.json), and placemark files (camps.json, cpi_office.json) are in assets/data/.
 Confirm logo PNG files (cpi_logo.png, health.png, sustainable.png, research.png, emergency.png, logo1.png to logo12.png) are in assets/logos/.
-Confirm icon ICO files (icon1.ico to icon15.ico) are in assets/icons/.
+Confirm icon ICO files (checkpost.ico, cic.ico, clinic.ico, cpi.ico, education.ico, health.ico, health_post.ico, hospital.ico, hp.ico, hss.ico, military.ico, outreach.ico, police_camp.ico, spe_health_facility.ico, wash.ico) are in assets/icons/.
 
 
 ## Install Dependencies:
@@ -85,38 +85,33 @@ cpi-bangladesh-map/
 │   │   └── cpi_office.json
 │   ├── logos/
 │   │   ├── cpi_logo.png
-│   │   ├── health.png
-│   │   ├── sustainable.png
-│   │   ├── research.png
-│   │   ├── emergency.png
-│   │   ├── logo1.png
-│   │   ├── logo2.png
-│   │   ├── logo3.png
-│   │   ├── logo4.png
-│   │   ├── logo5.png
-│   │   ├── logo6.png
-│   │   ├── logo7.png
-│   │   ├── logo8.png
-│   │   ├── logo9.png
-│   │   ├── logo10.png
-│   │   ├── logo11.png
-│   │   └── logo12.png
+│   │   ├── health_logo.png
+│   │   ├── sustainable_logo.png
+│   │   ├── research_logo.png
+│   │   ├── emergency_logo.png
+│   │   ├── education_logo.png
+│   │   ├── health_nutrition_logo.png
+│   │   ├── hp_logo.png
+│   │   ├── hss_logo.png
+│   │   ├── livelihood_logo.png
+│   │   ├── outreach_logo.png
+│   │   ├── wash_logo.png
 │   └── icons/
-│       ├── icon1.ico
-│       ├── icon2.ico
-│       ├── icon3.ico
-│       ├── icon4.ico
-│       ├── icon5.ico
-│       ├── icon6.ico
-│       ├── icon7.ico
-│       ├── icon8.ico
-│       ├── icon9.ico
-│       ├── icon10.ico
-│       ├── icon11.ico
-│       ├── icon12.ico
-│       ├── icon13.ico
-│       ├── icon14.ico
-│       └── icon15.ico
+│       ├── checkpost.ico
+│       ├── cic.ico
+│       ├── clinic.ico
+│       ├── cpi.ico
+│       ├── education.ico
+│       ├── health.ico
+│       ├── health_post.ico
+│       ├── hospital.ico
+│       ├── hp.ico
+│       ├── hss.ico
+│       ├── military.ico
+│       ├── outreach.ico
+│       ├── police_camp.ico
+│       ├── spe_health_facility.ico
+│       └── wash.ico
 ├── index.html
 └── README.md
 
